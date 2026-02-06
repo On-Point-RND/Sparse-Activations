@@ -1,1 +1,1 @@
-# Sparse-Activations-
+# Sparse-Activations
