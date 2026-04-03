@@ -17,7 +17,7 @@ def analytical_module(cls: Type[nn.Module]) -> Type[nn.Module]:
         def __init__(
             self,
             *args,
-            debug_info: bool = True,
+            debug_info: bool = False,
             **kwargs,
         ):
             super().__init__(*args, **kwargs)
