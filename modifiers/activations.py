@@ -36,7 +36,7 @@ class ReLUSquaredClipped(ReLUSquared):
 
     def forward(self, input):
         output = super().forward(input)
-        output[output > self.clip_value] = self.clip_value
+        output.clamp_(max=self.clip_value)
         return output
 
 
@@ -64,7 +64,7 @@ class GELUSquaredClipped(GELUSquared):
 
     def forward(self, input):
         output = super().forward(input)
-        output[output > self.clip_value] = self.clip_value
+        output.clamp_(max=self.clip_value)
         return output
 
 
