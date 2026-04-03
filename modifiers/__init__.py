@@ -1,6 +1,10 @@
 from .decorators import analytical_module, topk_sparse_module
 from .activations import (
     ReLUSquared,
+    ReLUSquaredClipped,
+    GELUSquared,
+    GELUSquaredClipped,
+
     QuantileReLU,
     NoisyReLU,
 
@@ -13,6 +17,7 @@ from .activations import (
 )
 from .normalizations import (
     QuantileBatchNorm2d,
+    BatchNorm2dPreStop,
     QuantileLayerNorm,
     QuantileMeanBatchNorm2d,
 
@@ -27,6 +32,10 @@ __all__ = [
 
     # Activations
     'ReLUSquared',
+    "ReLUSquaredClipped",
+    'GELUSquared',
+    'GELUSquaredClipped',
+
     'QuantileReLU',
     'NoisyReLU',
     
@@ -39,6 +48,7 @@ __all__ = [
 
     # Normalizations
     'QuantileBatchNorm2d',
+    'BatchNorm2dPreStop',
     'QuantileLayerNorm',
     'QuantileMeanBatchNorm2d',
 
