@@ -285,6 +285,31 @@ class QuantileMeanBatchNorm2d(BatchNorm2d):
 
     def extra_repr(self) -> str:
         return f'(standart var) quantile={self.sparsity_level}, {super().extra_repr()}'
+    
+
+class BatchNorm2dPreStop(BatchNorm2d):
+    """
+    BatchNorm2d variant that stops updating running statistics after a certain number of batches.
+    After num_batches_tracked reaches max_tracked_cnt, the module will use the current running_mean and running_var for normalization without updating them further.
+    """
+
+    def __init__(self, *args, max_tracked_cnt: Optional[int] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.max_tracked_cnt = max_tracked_cnt
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        batch_mean = None
+        batch_var = None
+
+        if self.track_running_stats and self.max_tracked_cnt is not None and self.max_tracked_cnt <= self.num_batches_tracked:
+            batch_mean = self.running_mean
+            batch_var = self.running_var
+
+        return super().forward(x, batch_mean=batch_mean, batch_var=batch_var)
+    
+    def extra_repr(self) -> str:
+        return f'(pre-stop) max_tracked_cnt={self.max_tracked_cnt}, {super().extra_repr()}'
 
 
 class QuantileLayerNorm(LayerNorm):
@@ -373,6 +398,8 @@ NORMALIZATION_NAMES_MAP = {
     'BatchNorm2d': nn.BatchNorm2d,
     'LayerNorm': nn.LayerNorm,
 
+    'BatchNorm2dPreStop': BatchNorm2dPreStop,
+
     'QuantileBatchNorm2d': QuantileBatchNorm2d,
     'QuantileBatchNorm2d-10': partial(QuantileBatchNorm2d, sparsity_level=0.1),
     'QuantileBatchNorm2d-25': partial(QuantileBatchNorm2d, sparsity_level=0.25),
@@ -398,6 +425,8 @@ NORMALIZATION_NAMES_MAP = {
 NormalizationClass = Literal[
     'BatchNorm2d',
     'LayerNorm',
+
+    'BatchNorm2dPreStop',
 
     'QuantileBatchNorm2d', 'QuantileBatchNorm2d-10', 'QuantileBatchNorm2d-25', 'QuantileBatchNorm2d-50', 'QuantileBatchNorm2d-75', 'QuantileBatchNorm2d-90',
     'QuantileMeanBatchNorm2d', 'QuantileMeanBatchNorm2d-10', 'QuantileMeanBatchNorm2d-25', 'QuantileMeanBatchNorm2d-50', 'QuantileMeanBatchNorm2d-75', 'QuantileMeanBatchNorm2d-90',
