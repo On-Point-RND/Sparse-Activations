@@ -3,8 +3,8 @@ from functools import partial
 
 import torch.nn as nn
 
-from modifiers.activations import ACTIVATION_NAMES_MAP, ActivationClass
-from modifiers.normalizations import NORMALIZATION_NAMES_MAP, NormalizationClass
+from .activations import ACTIVATION_NAMES_MAP, ActivationClass
+from .normalizations import NORMALIZATION_NAMES_MAP, NormalizationClass
 
 
 ##########################################################################

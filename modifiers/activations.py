@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modifiers.decorators import analytical_module, topk_sparse_module
+from .decorators import analytical_module, topk_sparse_module
 
 
 ##########################################################################
@@ -30,13 +30,13 @@ class ReLUSquaredClipped(ReLUSquared):
     """
     ReLUSquaredClipped is an activation function that applies the ReLU operation followed by squaring the output and clipping it to a maximum value (i.e., f(x) = min((max(0, x))^2, clip_value)).
     """
-    def __init__(self, clip_value: float = 15.0, inplace: bool = False):
-        super().__init__(inplace)
+    def __init__(self, *args, clip_value: float = 15.0, **kwargs):
+        super().__init__(*args, **kwargs)
         self.clip_value = clip_value
 
     def forward(self, input):
         output = super().forward(input)
-        output.clamp_(max=self.clip_value)
+        output[output > self.clip_value] = self.clip_value
         return output
 
 
@@ -58,13 +58,13 @@ class GELUSquaredClipped(GELUSquared):
     """
     GELUSquaredClipped is an activation function that applies the GELU operation followed by squaring the output and clipping it to a maximum value (i.e., f(x) = min((GELU(x))^2, clip_value)).
     """
-    def __init__(self, clip_value: float = 15.0, inplace: bool = False):
-        super().__init__(inplace)
+    def __init__(self, *args, clip_value: float = 15.0, **kwargs):
+        super().__init__(*args, **kwargs)
         self.clip_value = clip_value
 
     def forward(self, input):
         output = super().forward(input)
-        output.clamp_(max=self.clip_value)
+        output[output > self.clip_value] = self.clip_value
         return output
 
 
