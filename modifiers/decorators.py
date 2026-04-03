@@ -28,10 +28,10 @@ def analytical_module(cls: Type[nn.Module]) -> Type[nn.Module]:
             
         def forward(self, x):
             if self.debug_info:
-                self.in_activation = x
+                self.in_activation = x.clone().detach()
             x = super().forward(x)
             if self.debug_info:
-                self.out_activation = x
+                self.out_activation = x.clone().detach()
             return x
         
         def extra_repr(self) -> str:
