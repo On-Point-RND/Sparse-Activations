@@ -21,7 +21,7 @@ class ReLUSquared(nn.ReLU):
     """
     def forward(self, input):
         output = super().forward(input)
-        output.square_()
+        output = output.square() # FIXME: Use in-place operation for better performance. For now square_ causes issues with autograd in some cases
         return output
     
 
@@ -160,7 +160,10 @@ class NoisyReLU(nn.ReLU):
         epsilon = torch.randn_like(x)
         if self.noise_type == 'half-normal':
             epsilon.abs_()
-        noise = sigma.mul(epsilon.mul_(self.c)).masked_fill_(mask, 0.0)
+        noise = sigma.mul(epsilon.mul_(self.c))
+
+        if 1 - self.alpha < 0:
+            noise = noise.neg_()
         
         x = F.leaky_relu(x, (1 - self.alpha)) + noise
         
