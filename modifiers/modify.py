@@ -1,3 +1,4 @@
+import inspect
 from typing import List
 from functools import partial
 
@@ -10,6 +11,26 @@ from .normalizations import NORMALIZATION_NAMES_MAP, NormalizationClass
 ##########################################################################
 #                Function to replace layers in a module                  #
 ##########################################################################
+
+def create_layer_with_parameters(new_cls: nn.Module, old_layer: nn.Module, params_to_copy: List[str]) -> nn.Module:
+    new_layer_args = inspect.signature(new_cls.__init__).parameters
+    has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in new_layer_args.values())
+    layer_params = {
+        k: v for k, v in old_layer.__dict__.items()
+        if (
+            k not in params_to_copy
+            and not k.startswith('_')
+            and (k in new_layer_args or has_kwargs)
+        )
+    }
+
+    new_layer = new_cls(**layer_params)
+
+    for p in params_to_copy:
+        if hasattr(old_layer, p) and hasattr(new_layer, p):
+            setattr(new_layer, p, getattr(old_layer, p))
+
+    return new_layer
 
 def replace_activation(
     module: nn.Module,
@@ -25,13 +46,16 @@ def replace_activation(
 
     resulting_layers: List[nn.Module] = []
     
+    params_to_copy = ['training']
+    
     for layer in module.modules():
         for child_name, child in layer.named_children():
             if isinstance(child, original_cls):
-                new_activation = replaced_cls(**child.__dict__)
-                # FIXME: add debug_info passing in initialization
+                new_activation = create_layer_with_parameters(replaced_cls, child, params_to_copy=params_to_copy)
+
                 if hasattr(new_activation, 'debug_info'):
                     new_activation.debug_info = debug_info
+
                 setattr(layer, child_name, new_activation)
                 resulting_layers.append(new_activation)
 
@@ -51,12 +75,15 @@ def replace_normalization(
 
     resulting_layers: List[nn.Module] = []
     
+    params_to_copy = ['training', 'running_mean', 'running_var']
+
     for layer in module.modules():
         for child_name, child in layer.named_children():
             if isinstance(child, original_cls):
-                new_activation = replaced_cls(**child.__dict__)
-                setattr(layer, child_name, new_activation)
-                resulting_layers.append(new_activation)
+                new_normalization = create_layer_with_parameters(replaced_cls, child, params_to_copy=params_to_copy)
+
+                setattr(layer, child_name, new_normalization)
+                resulting_layers.append(new_normalization)
 
     return resulting_layers
 
