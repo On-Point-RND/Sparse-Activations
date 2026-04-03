@@ -109,6 +109,13 @@ class SUGARBSiLU(nn.ReLU):
     see: https://arxiv.org/html/2505.22074v1 for more details on SUGAR-BSiLU and its properties.
     """
 
+    def __init__(self, *args, alpha=1.67, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        assert getattr(self, 'inplace', False) == False, "Without triton kernel it is impossible to make inplace SUGAR-BSiLU"
+
+        self.alpha = alpha
+
     def backward(self, grad_output):
         return BSiLU.backward(self, grad_output)
 
