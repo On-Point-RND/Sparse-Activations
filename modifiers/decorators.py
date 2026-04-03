@@ -61,7 +61,7 @@ def topk_sparse_module(cls: Type[nn.Module]) -> Type[nn.Module]:
         ):
             super().__init__(*args, **kwargs)
 
-            assert sparsity_level is None or (0.0 < sparsity_level < 1.0), "sparsity_level must be in (0, 1)"
+            assert sparsity_level is None or (0.0 <= sparsity_level <= 1.0), "sparsity_level must be in [0, 1]"
 
             self.sparsity_level = sparsity_level
             self.post_sparsity = post_sparsity
@@ -70,12 +70,14 @@ def topk_sparse_module(cls: Type[nn.Module]) -> Type[nn.Module]:
             if self.post_sparsity:
                 x = super().forward(x)
 
-            if self.sparsity_level is not None:
+            if self.sparsity_level == 1.0:
+                x.fill_(0.0)
+            elif self.sparsity_level is not None and self.sparsity_level > 0.0:
                 x_act_resized = x.view(x.size(dim=0), -1)
                 total_elements = x_act_resized.size(dim=-1)  # per-sample element count
-                n_keep = int((1.0 - self.sparsity_level) * total_elements)
-                
-                kth_values = torch.kthvalue(x_act_resized, n_keep, dim=-1).values
+                n_remove = int(self.sparsity_level * total_elements) + 1
+
+                kth_values = torch.kthvalue(x_act_resized, n_remove, dim=-1).values
                 mask = x < kth_values[:, None, None, None]
                 x.masked_fill_(mask, 0.0)
 
