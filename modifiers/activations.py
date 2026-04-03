@@ -21,10 +21,50 @@ class ReLUSquared(nn.ReLU):
     """
     def forward(self, input):
         output = super().forward(input)
-        if getattr(self, 'inplace', False):
-            output.square_()
-        else:
-            output = torch.square(output)
+        output.square_()
+        return output
+    
+
+@analytical_module
+class ReLUSquaredClipped(ReLUSquared):
+    """
+    ReLUSquaredClipped is an activation function that applies the ReLU operation followed by squaring the output and clipping it to a maximum value (i.e., f(x) = min((max(0, x))^2, clip_value)).
+    """
+    def __init__(self, clip_value: float = 15.0, inplace: bool = False):
+        super().__init__(inplace)
+        self.clip_value = clip_value
+
+    def forward(self, input):
+        output = super().forward(input)
+        output.clamp_(max=self.clip_value)
+        return output
+
+
+# GELU^2
+
+@analytical_module
+class GELUSquared(nn.GELU):
+    """
+    GELUSquared is an activation function that applies the GELU operation followed by squaring the output (i.e., f(x) = (GELU(x))^2).
+    """
+    def forward(self, input):
+        output = super().forward(input)
+        output.square_()
+        return output
+
+
+@analytical_module
+class GELUSquaredClipped(GELUSquared):
+    """
+    GELUSquaredClipped is an activation function that applies the GELU operation followed by squaring the output and clipping it to a maximum value (i.e., f(x) = min((GELU(x))^2, clip_value)).
+    """
+    def __init__(self, clip_value: float = 15.0, inplace: bool = False):
+        super().__init__(inplace)
+        self.clip_value = clip_value
+
+    def forward(self, input):
+        output = super().forward(input)
+        output.clamp_(max=self.clip_value)
         return output
 
 
@@ -197,6 +237,9 @@ ACTIVATION_NAMES_MAP = {
     'ASiLU': analytical_module(nn.SiLU),
 
     'ReLUSquared': ReLUSquared,
+    'ReLUSquaredClipped': ReLUSquaredClipped,
+    'GELUSquared': GELUSquared,
+    'GELUSquaredClipped': GELUSquaredClipped,
 
     'BSiLU': BSiLU,
     'SUGARBSiLU': SUGARBSiLU,
@@ -220,7 +263,8 @@ ACTIVATION_NAMES_MAP = {
 ActivationClass = Literal[
     'ReLU', 'GELU', 'SiLU',
     'AReLU', 'AGELU', 'ASiLU',
-    'ReLUSquared',
+    'ReLUSquared', 'ReLUSquaredClipped',
+    'GELUSquared', 'GELUSquaredClipped',
     'BSiLU', 'SUGARBSiLU', 'NoisyReLU',
     'QuantileReLU', 'QuantileReLU-10', 'QuantileReLU-25', 'QuantileReLU-50', 'QuantileReLU-75', 'QuantileReLU-90',
     'TopKSparseGELU', 'TopKSparseGELU-10', 'TopKSparseGELU-25', 'TopKSparseGELU-50', 'TopKSparseGELU-75', 'TopKSparseGELU-90',
