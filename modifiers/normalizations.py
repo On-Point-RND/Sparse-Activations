@@ -231,8 +231,8 @@ class QuantileBatchNorm2d(BatchNorm2d):
         elif self.training and self.sparsity_level is not None:
             x_viewed = self.quantile_view_fn(x)
 
-            # FIXME: Use torch.kthvalue for better performance
-            batch_mean = torch.quantile(x_viewed, self.sparsity_level, dim=-1)
+            kth_element = int(self.sparsity_level * x_viewed.size(dim=-1)) + 1
+            batch_mean = torch.kthvalue(x_viewed, kth_element, dim=-1).values
             batch_mean = batch_mean.mean(dim=0) # Average over batch
 
         return super().forward(x, batch_mean=batch_mean)
@@ -275,8 +275,8 @@ class QuantileMeanBatchNorm2d(BatchNorm2d):
         elif self.training and self.sparsity_level is not None:
             x_viewed = self.quantile_view_fn(x)
 
-            # FIXME: Use torch.kthvalue for better performance
-            batch_mean = torch.quantile(x_viewed, self.sparsity_level, dim=-1)
+            kth_element = int(self.sparsity_level * x_viewed.size(dim=-1)) + 1
+            batch_mean = torch.kthvalue(x_viewed, kth_element, dim=-1).values
             batch_mean = batch_mean.mean(dim=0) # Average over batch
 
             batch_var = x.var(dim=(0, 2, 3), correction=0)
@@ -369,8 +369,8 @@ class QuantileLayerNorm(LayerNorm):
             x_viewed = self.quantile_view_fn(x)
 
             # Compute quantile threshold
-            n_remove = round(self.sparsity_level * x_viewed.size(dim=-1))
-            layer_mean = torch.kthvalue(x_viewed, n_remove, dim=-1).values
+            kth_element = int(self.sparsity_level * x_viewed.size(dim=-1)) + 1
+            layer_mean = torch.kthvalue(x_viewed, kth_element, dim=-1).values
             layer_mean = layer_mean.mean(dim=0) # Average over batch
 
             if self.track_running_stats:

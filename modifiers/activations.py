@@ -190,14 +190,15 @@ class QuantileReLU(nn.ReLU):
         
         elif self.shifted_sparsity or self.continuous:
             # Find k-th value for each batch element
-            # FIXME: Calculate quantiles along the batch
-            kth_values = torch.quantile(input, self.sparsity_level, dim=0, keepdim=True)
+            n_remove = int(self.sparsity_level * input.size(dim=0)) + 1
+            kth_values = torch.kthvalue(input, n_remove, dim=0, keepdim=True).values
             output = super().forward(input - kth_values)
             if not self.continuous:
                 output = output + kth_values
         
         else:
-            mask = input >= torch.quantile(input, self.sparsity_level, dim=0, keepdim=True)
+            n_remove = int(self.sparsity_level * input.size(dim=0)) + 1
+            mask = input >= torch.kthvalue(input, n_remove, dim=0, keepdim=True).values
             output = input * mask
             
         if not self.signed:
