@@ -1,5 +1,5 @@
 import inspect
-from typing import List
+from typing import Dict, List
 from functools import partial
 
 import torch.nn as nn
@@ -12,7 +12,7 @@ from .normalizations import NORMALIZATION_NAMES_MAP, NormalizationClass
 #                Function to replace layers in a module                  #
 ##########################################################################
 
-def create_layer_with_parameters(new_cls: nn.Module, old_layer: nn.Module, params_to_copy: List[str]) -> nn.Module:
+def create_layer_with_parameters(new_cls: nn.Module, old_layer: nn.Module, params_to_copy: List[str] = [], params_to_set: Dict[str, object] = {}) -> nn.Module:
     new_layer_args = inspect.signature(new_cls.__init__).parameters
     has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in new_layer_args.values())
     layer_params = {
@@ -24,11 +24,19 @@ def create_layer_with_parameters(new_cls: nn.Module, old_layer: nn.Module, param
         )
     }
 
+    for p, v in params_to_set.items():
+        if p in new_layer_args or has_kwargs:
+            layer_params[p] = v
+
     new_layer = new_cls(**layer_params)
 
     for p in params_to_copy:
-        if hasattr(old_layer, p) and hasattr(new_layer, p):
+        if (p not in layer_params) and hasattr(old_layer, p) and hasattr(new_layer, p):
             setattr(new_layer, p, getattr(old_layer, p))
+
+    for p, v in params_to_set.items():
+        if (p not in layer_params) and hasattr(new_layer, p):
+            setattr(new_layer, p, v)
 
     return new_layer
 
@@ -36,7 +44,7 @@ def replace_activation(
     module: nn.Module,
     original_activation: ActivationClass = 'GELU',
     replaced_activation: ActivationClass | nn.Module = 'ReLU',
-    debug_info: bool = False,
+    **params_to_set,
 ) -> List[nn.Module]:
     assert original_activation in ACTIVATION_NAMES_MAP, f"Original activation '{original_activation}' is not supported."
     assert replaced_activation in ACTIVATION_NAMES_MAP or isinstance(replaced_activation, nn.Module), f"Replaced activation '{replaced_activation}' is not supported."
@@ -46,15 +54,12 @@ def replace_activation(
 
     resulting_layers: List[nn.Module] = []
     
-    params_to_copy = ['training']
+    params_to_copy = ['training', 'num_batches_tracked', 'running_treshold']
     
     for layer in module.modules():
         for child_name, child in layer.named_children():
-            if isinstance(child, original_cls):
-                new_activation = create_layer_with_parameters(replaced_cls, child, params_to_copy=params_to_copy)
-
-                if hasattr(new_activation, 'debug_info'):
-                    new_activation.debug_info = debug_info
+            if type(child) is original_cls:
+                new_activation = create_layer_with_parameters(replaced_cls, child, params_to_copy=params_to_copy, params_to_set=params_to_set)
 
                 setattr(layer, child_name, new_activation)
                 resulting_layers.append(new_activation)
@@ -65,7 +70,8 @@ def replace_activation(
 def replace_normalization(
     module: nn.Module,
     original_normalization: NormalizationClass = 'BatchNorm2d',
-    replaced_normalization: NormalizationClass | nn.Module = 'SparseBatchNorm2dQuantile50',
+    replaced_normalization: NormalizationClass | nn.Module = 'QuantileBatchNorm2d-50',
+    **params_to_set,
 ) -> List[nn.Module]:
     assert original_normalization in NORMALIZATION_NAMES_MAP, f"Original normalization '{original_normalization}' is not supported."
     assert replaced_normalization in NORMALIZATION_NAMES_MAP or isinstance(replaced_normalization, nn.Module), f"Replaced normalization '{replaced_normalization}' is not supported."
@@ -79,8 +85,8 @@ def replace_normalization(
 
     for layer in module.modules():
         for child_name, child in layer.named_children():
-            if isinstance(child, original_cls):
-                new_normalization = create_layer_with_parameters(replaced_cls, child, params_to_copy=params_to_copy)
+            if type(child) is original_cls:
+                new_normalization = create_layer_with_parameters(replaced_cls, child, params_to_copy=params_to_copy, params_to_set=params_to_set)
 
                 setattr(layer, child_name, new_normalization)
                 resulting_layers.append(new_normalization)
