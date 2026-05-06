@@ -192,7 +192,96 @@ class LayerNorm(nn.Module):
     
     def extra_repr(self) -> str:
         return (f'normalized_shape={self.normalized_shape}, eps={self.eps}, '
-                f'elementwise_affine={self.elementwise_affine}, bias={self.bias}')
+                f'elementwise_affine={self.elementwise_affine}, bias={self.bias is not None}')
+    
+
+##########################################################################
+#                     PreStop Normalization layers                       #
+##########################################################################
+    
+    
+class BatchNorm2dPreStop(BatchNorm2d):
+    """
+    BatchNorm2d variant that stops updating running statistics after a certain number of batches.
+    After num_batches_tracked reaches max_tracked_cnt, the module will use the current running_mean and running_var for normalization without updating them further.
+    """
+
+    def __init__(self, *args, max_tracked_cnt: Optional[int] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.max_tracked_cnt = max_tracked_cnt
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        batch_mean = None
+        batch_var = None
+
+        if self.track_running_stats and self.max_tracked_cnt is not None and self.max_tracked_cnt <= self.num_batches_tracked:
+            batch_mean = self.running_mean
+            batch_var = self.running_var
+
+        return super().forward(x, batch_mean=batch_mean, batch_var=batch_var)
+    
+    def extra_repr(self) -> str:
+        return f'(pre-stop) max_tracked_cnt={self.max_tracked_cnt}, {super().extra_repr()}'
+    
+
+class LayerNormPreStop(LayerNorm):
+    """
+    LayerNorm variant that stops updating running statistics after a certain number of batches.
+    After num_batches_tracked reaches max_tracked_cnt, the module will use the current running_layer_mean for normalization without updating it further.
+    """
+
+    def __init__(
+            self,
+            *args,
+            track_running_stats: bool = True,
+            running_shape: Optional[torch.Size] = None,
+            momentum: float = 0.1,
+            max_tracked_cnt: Optional[int] = None,
+            **kwargs
+        ):
+        super().__init__(*args, **kwargs)
+
+        self.track_running_stats = track_running_stats
+        self.momentum = momentum
+        self.max_tracked_cnt = max_tracked_cnt
+
+        if self.track_running_stats:
+            self.register_buffer('running_layer_mean', torch.zeros(running_shape or (1,)))
+            self.register_buffer('running_layer_var', torch.ones(running_shape or (1,)))
+            self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        layer_mean = None
+        layer_var = None
+
+        if self.track_running_stats and self.max_tracked_cnt is not None and self.max_tracked_cnt <= self.num_batches_tracked:
+            layer_mean = self.running_layer_mean
+            layer_var = self.running_layer_var
+        elif self.training or self.running_layer_mean is None:
+            dims = tuple(range(-len(self.normalized_shape), 0))
+            
+            layer_mean = x.mean(dim=dims, keepdim=True)
+            layer_var = (x - layer_mean).square().mean(dim=dims, keepdim=True)
+
+            if self.track_running_stats:
+                with torch.no_grad():
+                    if self.num_batches_tracked != 0:
+                        self.running_layer_mean = (1 - self.momentum) * self.running_layer_mean + self.momentum * layer_mean
+                        self.running_layer_var = (1 - self.momentum) * self.running_layer_var + self.momentum * layer_var
+                    else:
+                        self.running_layer_mean = layer_mean
+                        self.running_layer_var = layer_var
+                    self.num_batches_tracked += 1
+        else:
+            layer_mean = self.running_layer_mean
+            layer_var = self.running_layer_var
+
+        output= super().forward(x, layer_mean=layer_mean, layer_var=layer_var)
+        return output
+
+    def extra_repr(self) -> str:
+        return f'(pre-stop) max_tracked_cnt={self.max_tracked_cnt}, {super().extra_repr()}'
 
 
 ##########################################################################
@@ -285,31 +374,6 @@ class QuantileMeanBatchNorm2d(BatchNorm2d):
 
     def extra_repr(self) -> str:
         return f'(standart var) quantile={self.sparsity_level}, {super().extra_repr()}'
-    
-
-class BatchNorm2dPreStop(BatchNorm2d):
-    """
-    BatchNorm2d variant that stops updating running statistics after a certain number of batches.
-    After num_batches_tracked reaches max_tracked_cnt, the module will use the current running_mean and running_var for normalization without updating them further.
-    """
-
-    def __init__(self, *args, max_tracked_cnt: Optional[int] = None, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.max_tracked_cnt = max_tracked_cnt
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        batch_mean = None
-        batch_var = None
-
-        if self.track_running_stats and self.max_tracked_cnt is not None and self.max_tracked_cnt <= self.num_batches_tracked:
-            batch_mean = self.running_mean
-            batch_var = self.running_var
-
-        return super().forward(x, batch_mean=batch_mean, batch_var=batch_var)
-    
-    def extra_repr(self) -> str:
-        return f'(pre-stop) max_tracked_cnt={self.max_tracked_cnt}, {super().extra_repr()}'
 
 
 class QuantileLayerNorm(LayerNorm):
@@ -399,6 +463,7 @@ NORMALIZATION_NAMES_MAP = {
     'LayerNorm': nn.LayerNorm,
 
     'BatchNorm2dPreStop': BatchNorm2dPreStop,
+    'LayerNormPreStop': LayerNormPreStop,
 
     'QuantileBatchNorm2d': QuantileBatchNorm2d,
     'QuantileBatchNorm2d-10': partial(QuantileBatchNorm2d, sparsity_level=0.1),
@@ -427,7 +492,8 @@ NormalizationClass = Literal[
     'LayerNorm',
 
     'BatchNorm2dPreStop',
-
+    'LayerNormPreStop',
+    
     'QuantileBatchNorm2d', 'QuantileBatchNorm2d-10', 'QuantileBatchNorm2d-25', 'QuantileBatchNorm2d-50', 'QuantileBatchNorm2d-75', 'QuantileBatchNorm2d-90',
     'QuantileMeanBatchNorm2d', 'QuantileMeanBatchNorm2d-10', 'QuantileMeanBatchNorm2d-25', 'QuantileMeanBatchNorm2d-50', 'QuantileMeanBatchNorm2d-75', 'QuantileMeanBatchNorm2d-90',
     'QuantileLayerNorm', 'QuantileLayerNorm-10', 'QuantileLayerNorm-25', 'QuantileLayerNorm-50', 'QuantileLayerNorm-75', 'QuantileLayerNorm-90',

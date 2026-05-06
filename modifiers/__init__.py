@@ -16,8 +16,10 @@ from .activations import (
     ActivationClass,
 )
 from .normalizations import (
-    QuantileBatchNorm2d,
     BatchNorm2dPreStop,
+    LayerNormPreStop,
+
+    QuantileBatchNorm2d,
     QuantileLayerNorm,
     QuantileMeanBatchNorm2d,
 
@@ -54,8 +56,10 @@ __all__ = [
     'ActivationClass',
 
     # Normalizations
-    'QuantileBatchNorm2d',
     'BatchNorm2dPreStop',
+    'LayerNormPreStop',
+
+    'QuantileBatchNorm2d',
     'QuantileLayerNorm',
     'QuantileMeanBatchNorm2d',
 
