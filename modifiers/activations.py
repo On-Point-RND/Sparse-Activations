@@ -240,10 +240,12 @@ class TopKSparseGELU(nn.GELU):
 
 ACTIVATION_NAMES_MAP = {
     'ReLU': nn.ReLU,
+    'PReLU': nn.PReLU,
     'GELU': nn.GELU,
     'SiLU': nn.SiLU,
 
     'AReLU': analytical_activation_module(nn.ReLU),
+    'APReLU': analytical_activation_module(nn.PReLU),
     'AGELU': analytical_activation_module(nn.GELU),
     'ASiLU': analytical_activation_module(nn.SiLU),
 
@@ -268,15 +270,31 @@ ACTIVATION_NAMES_MAP = {
     'TopKSparseGELU-25': partial(TopKSparseGELU, sparsity_level=0.25),
     'TopKSparseGELU-50': partial(TopKSparseGELU, sparsity_level=0.50),
     'TopKSparseGELU-75': partial(TopKSparseGELU, sparsity_level=0.75),
+    'TopKSparseGELU-80': partial(TopKSparseGELU, sparsity_level=0.80),
+    'TopKSparseGELU-85': partial(TopKSparseGELU, sparsity_level=0.85),
     'TopKSparseGELU-90': partial(TopKSparseGELU, sparsity_level=0.90),
+    'TopKSparseGELU-95': partial(TopKSparseGELU, sparsity_level=0.95),
+    'TopKSparseGELU-99': partial(TopKSparseGELU, sparsity_level=0.99),
+
+    'TopKSparseGELU-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000),
+    'TopKSparseGELU-10-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.10),
+    'TopKSparseGELU-25-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.25),
+    'TopKSparseGELU-50-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.50),
+    'TopKSparseGELU-75-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.75),
+    'TopKSparseGELU-80-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.80),
+    'TopKSparseGELU-85-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.85),
+    'TopKSparseGELU-90-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.90),
+    'TopKSparseGELU-95-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.95),
+    'TopKSparseGELU-99-AS': partial(TopKSparseGELU, max_tracked_cnt=50_000, sparsity_level=0.99),
 }
 
 ActivationClass = Literal[
-    'ReLU', 'GELU', 'SiLU',
-    'AReLU', 'AGELU', 'ASiLU',
+    'ReLU', 'PReLU', 'GELU', 'SiLU',
+    'AReLU', 'APReLU', 'AGELU', 'ASiLU',
     'ReLUSquared', 'ReLUSquaredClipped',
     'GELUSquared', 'GELUSquaredClipped',
     'BSiLU', 'SUGARBSiLU', 'NoisyReLU',
     'QuantileReLU', 'QuantileReLU-10', 'QuantileReLU-25', 'QuantileReLU-50', 'QuantileReLU-75', 'QuantileReLU-90',
-    'TopKSparseGELU', 'TopKSparseGELU-10', 'TopKSparseGELU-25', 'TopKSparseGELU-50', 'TopKSparseGELU-75', 'TopKSparseGELU-90',
+    'TopKSparseGELU', 'TopKSparseGELU-10', 'TopKSparseGELU-25', 'TopKSparseGELU-50', 'TopKSparseGELU-75', 'TopKSparseGELU-80', 'TopKSparseGELU-85', 'TopKSparseGELU-90', 'TopKSparseGELU-95', 'TopKSparseGELU-99',
+    'TopKSparseGELU-AS', 'TopKSparseGELU-10-AS', 'TopKSparseGELU-25-AS', 'TopKSparseGELU-50-AS', 'TopKSparseGELU-75-AS', 'TopKSparseGELU-80-AS', 'TopKSparseGELU-85-AS', 'TopKSparseGELU-90-AS', 'TopKSparseGELU-95-AS', 'TopKSparseGELU-99-AS',
 ]
