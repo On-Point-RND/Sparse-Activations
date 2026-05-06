@@ -1,4 +1,4 @@
-from .decorators import analytical_module, topk_sparse_module
+from .decorators import analytical_activation_module, analytical_linear_module, topk_sparse_module
 from .activations import (
     ReLUSquared,
     ReLUSquaredClipped,
@@ -44,7 +44,8 @@ from .modify import (
 __all__ = [
     # Decorators
     'topk_sparse_module',
-    'analytical_module',
+    'analytical_activation_module',
+    'analytical_linear_module',
 
     # Activations
     'ReLUSquared',

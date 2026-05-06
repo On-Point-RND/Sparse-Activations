@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .decorators import analytical_module, topk_sparse_module
+from .decorators import analytical_activation_module, topk_sparse_module
 
 
 ##########################################################################
@@ -14,7 +14,7 @@ from .decorators import analytical_module, topk_sparse_module
 
 # ReLU^2
 
-@analytical_module
+@analytical_activation_module
 class ReLUSquared(nn.ReLU):
     """
     ReLUSquared is an activation function that applies the ReLU operation followed by squaring the output (i.e., f(x) = (max(0, x))^2).
@@ -25,7 +25,7 @@ class ReLUSquared(nn.ReLU):
         return output
     
 
-@analytical_module
+@analytical_activation_module
 class ReLUSquaredClipped(ReLUSquared):
     """
     ReLUSquaredClipped is an activation function that applies the ReLU operation followed by squaring the output and clipping it to a maximum value (i.e., f(x) = min((max(0, x))^2, clip_value)).
@@ -42,7 +42,7 @@ class ReLUSquaredClipped(ReLUSquared):
 
 # GELU^2
 
-@analytical_module
+@analytical_activation_module
 class GELUSquared(nn.GELU):
     """
     GELUSquared is an activation function that applies the GELU operation followed by squaring the output (i.e., f(x) = (GELU(x))^2).
@@ -53,7 +53,7 @@ class GELUSquared(nn.GELU):
         return output
 
 
-@analytical_module
+@analytical_activation_module
 class GELUSquaredClipped(GELUSquared):
     """
     GELUSquaredClipped is an activation function that applies the GELU operation followed by squaring the output and clipping it to a maximum value (i.e., f(x) = min((GELU(x))^2, clip_value)).
@@ -70,7 +70,7 @@ class GELUSquaredClipped(GELUSquared):
 
 # B-SiLU
 
-@analytical_module
+@analytical_activation_module
 class BSiLU(nn.SiLU):
     """
     BSiLU is a modified version of the SiLU (Sigmoid Linear Unit) activation function, defined as:
@@ -101,7 +101,7 @@ class BSiLU(nn.SiLU):
 
 # Sugar B-SiLU
 
-@analytical_module
+@analytical_activation_module
 class SUGARBSiLU(nn.ReLU):
     """
     SUGAR-BSiLU is a variant of the surrogate gradient activation function that combines the properties of ReLU and B-SiLU. It is defined as:
@@ -122,7 +122,7 @@ class SUGARBSiLU(nn.ReLU):
 
 # Noisy ReLU
 
-@analytical_module
+@analytical_activation_module
 class NoisyReLU(nn.ReLU):
     """
     NoisyReLU is a variant of the ReLU activation function that adds noise to the output during training. The noise is generated based on the negative part of the input, and its scale is controlled by a learnable parameter p and a hyperparameter c. The noise can help regularize the model and improve generalization by preventing overfitting to the training data.
@@ -172,7 +172,7 @@ class NoisyReLU(nn.ReLU):
 
 # Quantile-based ReLU
 
-@analytical_module
+@analytical_activation_module
 class QuantileReLU(nn.ReLU):
     def __init__(
         self,
@@ -225,7 +225,7 @@ class QuantileReLU(nn.ReLU):
 #                           Sparse activations                           #
 ##########################################################################
 
-@analytical_module
+@analytical_activation_module
 @topk_sparse_module
 class TopKSparseGELU(nn.GELU):
     """
@@ -243,9 +243,9 @@ ACTIVATION_NAMES_MAP = {
     'GELU': nn.GELU,
     'SiLU': nn.SiLU,
 
-    'AReLU': analytical_module(nn.ReLU),
-    'AGELU': analytical_module(nn.GELU),
-    'ASiLU': analytical_module(nn.SiLU),
+    'AReLU': analytical_activation_module(nn.ReLU),
+    'AGELU': analytical_activation_module(nn.GELU),
+    'ASiLU': analytical_activation_module(nn.SiLU),
 
     'ReLUSquared': ReLUSquared,
     'ReLUSquaredClipped': ReLUSquaredClipped,

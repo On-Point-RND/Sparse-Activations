@@ -8,7 +8,7 @@ import torch.nn as nn
 #                    Decorator for analizing modules                     #
 ##########################################################################
 
-def analytical_module(cls: Type[nn.Module]) -> Type[nn.Module]:
+def analytical_activation_module(cls: Type[nn.Module]) -> Type[nn.Module]:
     """
     Decorator to create an analytical version of a given nn.Module class. The resulting class will have additional attributes to store the input and output activations, as well as a debug_info flag to control whether these activations are stored during the forward pass.
     """
@@ -25,14 +25,13 @@ def analytical_module(cls: Type[nn.Module]) -> Type[nn.Module]:
             self.debug_info = debug_info
             self.in_activation = None
             self.out_activation = None
-            
-        def forward(self, x):
+
             if self.debug_info:
-                self.in_activation = x.clone().detach()
-            x = super().forward(x)
-            if self.debug_info:
-                self.out_activation = x.clone().detach()
-            return x
+                def forward_hook(module, input, output):
+                    self.in_activation = input[0].clone().detach()
+                    self.out_activation = output.clone().detach()
+
+                self.register_forward_hook(forward_hook)
         
         def extra_repr(self) -> str:
             return f'debug_info={self.debug_info}, {super().extra_repr()}'
