@@ -6,6 +6,7 @@ import torch.nn as nn
 
 from .activations import ACTIVATION_NAMES_MAP, ActivationClass
 from .normalizations import NORMALIZATION_NAMES_MAP, NormalizationClass
+from .linears import LINEAR_NAMES_MAP, LinearClass
 
 
 ##########################################################################
@@ -94,4 +95,62 @@ def replace_normalization(
     return resulting_layers
 
 
+def replace_linear(
+    module: nn.Module,
+    original_linear: LinearClass = 'Linear',
+    replaced_linear: LinearClass | nn.Module = 'TopKSparseLinear-50',
+    **params_to_set,
+) -> List[nn.Module]:
+    assert original_linear in LINEAR_NAMES_MAP, f"Original linear '{original_linear}' is not supported."
+    assert replaced_linear in LINEAR_NAMES_MAP or isinstance(replaced_linear, nn.Module), f"Replaced linear '{replaced_linear}' is not supported."
+
+    original_cls = LINEAR_NAMES_MAP.get(original_linear)
+    replaced_cls = LINEAR_NAMES_MAP.get(replaced_linear) if isinstance(replaced_linear, str) else replaced_linear
+
+    resulting_layers: List[nn.Module] = []
+    
+    params_to_copy = ['training', 'transposed', 'output_padding', 'bias']
+    
+    for layer in module.modules():
+        for child_name, child in layer.named_children():
+            if type(child) is original_cls:
+                new_activation = create_layer_with_parameters(replaced_cls, child, params_to_copy=params_to_copy, params_to_set=params_to_set)
+
+                setattr(layer, child_name, new_activation)
+                resulting_layers.append(new_activation)
+
+    return resulting_layers
+
+
+##########################################################################
+#                Wrapper functions for common modifications              #
+##########################################################################
+
+
 relufiaction = partial(replace_activation, replaced_activation='ReLU')
+
+
+def make_analytical_activation(module: nn.Module) -> List[nn.Module]:
+    return sum(
+        [
+            replace_activation(module, original_activation=original_activation, replaced_activation=analytical_cls)
+            for original_activation, analytical_cls in [
+                ('GELU', 'AGELU'),
+                ('ReLU', 'AReLU'),
+                ('SiLU', 'ASiLU'),
+            ]
+        ], start=[]
+    )
+
+
+def make_analytical_linear(module: nn.Module) -> List[nn.Module]:
+    return sum(
+        [
+            replace_linear(module, original_linear=original_linear, replaced_linear=analytical_cls)
+            for original_linear, analytical_cls in [
+                ('Linear', 'ALinear'),
+                ('Conv2d', 'AConv2d'),
+                ('Conv1d', 'AConv1d'),
+            ]
+        ], start=[]
+    )

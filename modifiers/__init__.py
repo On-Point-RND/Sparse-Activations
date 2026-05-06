@@ -32,7 +32,14 @@ from .linears import (
 
     LinearClass,
 )
-from .modify import replace_activation, replace_normalization, relufiaction
+from .modify import (
+    replace_activation,
+    replace_normalization,
+    replace_linear,
+
+    make_analytical_activation,
+    make_analytical_linear
+)
 
 __all__ = [
     # Decorators
@@ -75,5 +82,8 @@ __all__ = [
     # Modifiers
     'replace_activation',
     'replace_normalization',
-    'relufiaction',
+    'replace_linear',
+    
+    'make_analytical_activation',
+    'make_analytical_linear',
 ]
