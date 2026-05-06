@@ -1,7 +1,9 @@
-from typing import Optional, Type
+from typing import Literal, Optional, Type
 
 import torch
 import torch.nn as nn
+
+from .utils import _review_as_with_batch
 
 
 ##########################################################################
@@ -127,28 +129,68 @@ def topk_sparse_module(cls: Type[nn.Module]) -> Type[nn.Module]:
             *args,
             sparsity_level: Optional[float] = None,
             post_sparsity: bool = True,
+            quantile_search_mode: Literal['global', 'batchwise', 'channelwise'] = 'channelwise',
+
+            running_stats: bool = False,
+            running_shape: Optional[torch.Size] = None,
+            momentum: float = 0.1,
+            max_tracked_cnt: Optional[int] = None,
             **kwargs
         ):
             super().__init__(*args, **kwargs)
 
-            assert sparsity_level is None or (0.0 <= sparsity_level <= 1.0), "sparsity_level must be in [0, 1]"
+            assert sparsity_level is None or (0.0 < sparsity_level < 1.0), "sparsity_level must be in (0, 1)"
 
             self.sparsity_level = sparsity_level
             self.post_sparsity = post_sparsity
+            self.running_stats = running_stats
+            self.momentum = momentum
+
+            self.quantile_search_mode = quantile_search_mode
+            self.quantile_view_fn = {
+                'global': lambda x: x.view(-1),
+                'batchwise': lambda x: x.view(x.size(0), -1),
+                'channelwise': lambda x: x.view(x.size(0), x.size(1), -1),
+            }[self.quantile_search_mode]
+
+            if self.running_stats:
+                self.running_treshold = torch.zeros(running_shape)
+                self.num_batches_tracked = torch.tensor(0, dtype=torch.long)
+            else:
+                self.register_buffer('running_treshold', None)
+                self.register_buffer('num_batches_tracked', None)
+                
+            self.max_tracked_cnt = max_tracked_cnt
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             if self.post_sparsity:
                 x = super().forward(x)
 
-            if self.sparsity_level == 1.0:
-                x.fill_(0.0)
-            elif self.sparsity_level is not None and self.sparsity_level > 0.0:
-                x_act_resized = x.view(x.size(dim=0), -1)
-                total_elements = x_act_resized.size(dim=-1)  # per-sample element count
-                n_remove = int(self.sparsity_level * total_elements) + 1
+            if self.sparsity_level is not None:
+                if self.running_stats and self.max_tracked_cnt is not None and self.max_tracked_cnt <= self.num_batches_tracked:
+                    treshold = self.running_treshold
+                elif self.training or self.running_treshold is None:
+                    # Compute quantile threshold
+                    x_viewed = self.quantile_view_fn(x)
+                    total_elements = x_viewed.size(dim=-1)  # per-sample element count
+                    n_remove = int(self.sparsity_level * total_elements) + 1
 
-                kth_values = torch.kthvalue(x_act_resized, n_remove, dim=-1).values
-                mask = x < kth_values[:, None, None, None]
+                    treshold = torch.kthvalue(x_viewed, n_remove, dim=-1).values
+                    treshold = treshold.mean(dim=0) # Average over batch
+
+                    if self.running_stats:
+                        with torch.no_grad():
+                            if self.num_batches_tracked != 0:
+                                self.running_treshold = (1 - self.momentum) * self.running_treshold + self.momentum * treshold
+                            else:
+                                self.running_treshold = treshold
+                            self.num_batches_tracked += 1
+                # Compute quantile threshold
+                else:
+                    treshold = self.running_treshold
+                
+                treshold = _review_as_with_batch(treshold, x.shape)
+                mask = x < treshold
                 x.masked_fill_(mask, 0.0)
 
             if not self.post_sparsity:
