@@ -23,6 +23,13 @@ from .normalizations import (
 
     NormalizationClass,
 )
+from .linears import (
+    TopKSparseLinear,
+    TopKSparseConv2d,
+    TopKSparseConv1d,
+
+    LinearClass,
+)
 from .modify import replace_activation, replace_normalization, relufiaction
 
 __all__ = [
@@ -53,6 +60,13 @@ __all__ = [
     'QuantileMeanBatchNorm2d',
 
     'NormalizationClass',
+
+    # Linears
+    'TopKSparseLinear',
+    'TopKSparseConv2d',
+    'TopKSparseConv1d',
+
+    'LinearClass',
 
     # Modifiers
     'replace_activation',

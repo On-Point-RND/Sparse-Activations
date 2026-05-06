@@ -42,6 +42,77 @@ def analytical_module(cls: Type[nn.Module]) -> Type[nn.Module]:
     return AnalyticalModule
 
 
+def analytical_linear_module(cls: Type[nn.Module]) -> Type[nn.Module]:
+    """
+    Decorator to create an analytical version of a given nn.Module class. The resulting class will have additional attributes to store the input and output activations, as well as a debug_info flag to control whether these activations are stored during the forward pass.
+    """
+
+    class AnalyticalModule(cls):
+        def __init__(
+            self,
+            *args,
+            debug_info: bool = False,
+            **kwargs,
+        ):
+            super().__init__(*args, **kwargs)
+
+            self.debug_info = debug_info
+
+            self.in_activation = None
+            self.out_activation = None
+
+            self.grad_in_activation = None
+            self.grad_out_activation = None
+
+            self.initial_weight_copy = None
+
+            if self.debug_info:
+                def forward_hook(module, input, output):
+                    self.in_activation = input[0].clone().detach()
+                    self.out_activation = output.clone().detach()
+
+                def backward_hook(module, grad_input, grad_output):
+                    if grad_input[0] is not None:
+                        self.grad_in_activation = grad_input[0].clone().detach()
+                    if grad_output[0] is not None:
+                        self.grad_out_activation = grad_output[0].clone().detach()
+
+                self.register_forward_hook(forward_hook)
+                self.register_full_backward_hook(backward_hook)
+        
+        def extra_repr(self) -> str:
+            return f'debug_info={self.debug_info}, {super().extra_repr()}'
+        
+        def record_initial_weights(self):
+            self.initial_weight_copy = self.weight.detach().clone()
+        
+        @property
+        def z_score(self):
+            if self.initial_weight_copy is None:
+                raise ValueError("Initial weights not recorded. Call record_initial_weights() before accessing z_score.")
+            return (self.weight - self.initial_weight_copy).mean() / (self.initial_weight_copy.std() + self.weight.std() + 1e-8) * 2.0
+        
+        @property
+        def weight_grad_mean(self):
+            return self.weight.grad.abs().mean()
+        
+        @property
+        def weight_grad_norm(self):
+            return self.weight.grad.norm()
+        
+        @property
+        def weight_mean(self):
+            return self.weight.mean()
+        
+        @property
+        def weight_norm(self):
+            return self.weight.norm()
+        
+    AnalyticalModule.__name__ = f"Analytical{cls.__name__}"
+        
+    return AnalyticalModule
+
+
 ##########################################################################
 #                    Decorator for sparse activations                    #
 ##########################################################################
