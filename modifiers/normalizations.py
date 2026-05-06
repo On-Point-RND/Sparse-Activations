@@ -53,6 +53,10 @@ class BatchNorm2d(nn.Module):
             self.register_buffer('running_mean', torch.zeros(num_features))
             self.register_buffer('running_var', torch.ones(num_features))
             self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
+            
+            self.running_mean: torch.Tensor | None
+            self.running_var: torch.Tensor | None
+            self.num_batches_tracked: torch.Tensor | None
         else:
             self.register_buffer('running_mean', None)
             self.register_buffer('running_var', None)
@@ -240,9 +244,17 @@ class LayerNormPreStop(LayerNorm):
         self.max_tracked_cnt = max_tracked_cnt
 
         if self.track_running_stats:
-            self.register_buffer('running_layer_mean', torch.zeros(running_shape or (1,)))
-            self.register_buffer('running_layer_var', torch.ones(running_shape or (1,)))
+            self.register_buffer('running_layer_mean', torch.zeros(running_shape))
+            self.register_buffer('running_layer_var', torch.ones(running_shape))
             self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
+            
+            self.running_layer_mean: torch.Tensor | None
+            self.running_layer_var: torch.Tensor | None
+            self.num_batches_tracked: torch.Tensor | None
+        else:
+            self.register_buffer('running_layer_mean', None)
+            self.register_buffer('running_layer_var', None)
+            self.register_buffer('num_batches_tracked', None)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         layer_mean = None
@@ -404,8 +416,14 @@ class QuantileLayerNorm(LayerNorm):
         }[self.quantile_search_mode]
 
         if self.track_running_stats:
-            self.register_buffer('running_layer_mean', torch.zeros(running_shape or (1,)))
+            self.register_buffer('running_layer_mean', torch.ones(running_shape))
             self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
+            
+            self.running_layer_mean: torch.Tensor | None
+            self.num_batches_tracked: torch.Tensor | None
+        else:
+            self.register_buffer('running_layer_mean', None)
+            self.register_buffer('num_batches_tracked', None)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """

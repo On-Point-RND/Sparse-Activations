@@ -154,8 +154,11 @@ def topk_sparse_module(cls: Type[nn.Module]) -> Type[nn.Module]:
             }[self.quantile_search_mode]
 
             if self.running_stats:
-                self.running_treshold = torch.zeros(running_shape)
-                self.num_batches_tracked = torch.tensor(0, dtype=torch.long)
+                self.register_buffer('running_treshold', torch.zeros(running_shape))
+                self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
+                
+                self.running_treshold: torch.Tensor | None
+                self.num_batches_tracked: torch.Tensor | None
             else:
                 self.register_buffer('running_treshold', None)
                 self.register_buffer('num_batches_tracked', None)
