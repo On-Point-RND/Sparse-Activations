@@ -386,7 +386,8 @@ class QuantileLayerNorm(LayerNorm):
             *args,
             sparsity_level: Optional[float] = None,
             quantile_search_mode: Literal['global', 'batchwise', 'channelwise'] = 'channelwise',
-            track_running_stats: bool = True,
+            
+            track_running_stats: bool = False,
             running_shape: Optional[torch.Size] = None,
             momentum: float = 0.1,
             max_tracked_cnt: Optional[int] = None,
@@ -472,6 +473,13 @@ NORMALIZATION_NAMES_MAP = {
     'QuantileBatchNorm2d-75': partial(QuantileBatchNorm2d, sparsity_level=0.75),
     'QuantileBatchNorm2d-90': partial(QuantileBatchNorm2d, sparsity_level=0.90),
 
+    'QuantileBatchNorm2d-AS': partial(QuantileBatchNorm2d, max_tracked_cnt=50_000),
+    'QuantileBatchNorm2d-10-AS': partial(QuantileBatchNorm2d, max_tracked_cnt=50_000, sparsity_level=0.1),
+    'QuantileBatchNorm2d-25-AS': partial(QuantileBatchNorm2d, max_tracked_cnt=50_000, sparsity_level=0.25),
+    'QuantileBatchNorm2d-50-AS': partial(QuantileBatchNorm2d, max_tracked_cnt=50_000, sparsity_level=0.50),
+    'QuantileBatchNorm2d-75-AS': partial(QuantileBatchNorm2d, max_tracked_cnt=50_000, sparsity_level=0.75),
+    'QuantileBatchNorm2d-90-AS': partial(QuantileBatchNorm2d, max_tracked_cnt=50_000, sparsity_level=0.90),
+
     'QuantileMeanBatchNorm2d': QuantileMeanBatchNorm2d,
     'QuantileMeanBatchNorm2d-10': partial(QuantileMeanBatchNorm2d, sparsity_level=0.1),
     'QuantileMeanBatchNorm2d-25': partial(QuantileMeanBatchNorm2d, sparsity_level=0.25),
@@ -485,6 +493,13 @@ NORMALIZATION_NAMES_MAP = {
     'QuantileLayerNorm-50': partial(QuantileLayerNorm, sparsity_level=0.50),
     'QuantileLayerNorm-75': partial(QuantileLayerNorm, sparsity_level=0.75),
     'QuantileLayerNorm-90': partial(QuantileLayerNorm, sparsity_level=0.90),
+
+    'QuantileLayerNorm-AS': partial(QuantileLayerNorm, max_tracked_cnt=50_000),
+    'QuantileLayerNorm-10-AS': partial(QuantileLayerNorm, max_tracked_cnt=50_000, sparsity_level=0.1),
+    'QuantileLayerNorm-25-AS': partial(QuantileLayerNorm, max_tracked_cnt=50_000, sparsity_level=0.25),
+    'QuantileLayerNorm-50-AS': partial(QuantileLayerNorm, max_tracked_cnt=50_000, sparsity_level=0.50),
+    'QuantileLayerNorm-75-AS': partial(QuantileLayerNorm, max_tracked_cnt=50_000, sparsity_level=0.75),
+    'QuantileLayerNorm-90-AS': partial(QuantileLayerNorm, max_tracked_cnt=50_000, sparsity_level=0.90),
 }
 
 NormalizationClass = Literal[
@@ -495,6 +510,10 @@ NormalizationClass = Literal[
     'LayerNormPreStop',
     
     'QuantileBatchNorm2d', 'QuantileBatchNorm2d-10', 'QuantileBatchNorm2d-25', 'QuantileBatchNorm2d-50', 'QuantileBatchNorm2d-75', 'QuantileBatchNorm2d-90',
+    'QuantileBatchNorm2d-AS', 'QuantileBatchNorm2d-10-AS', 'QuantileBatchNorm2d-25-AS', 'QuantileBatchNorm2d-50-AS', 'QuantileBatchNorm2d-75-AS', 'QuantileBatchNorm2d-90-AS',
+
     'QuantileMeanBatchNorm2d', 'QuantileMeanBatchNorm2d-10', 'QuantileMeanBatchNorm2d-25', 'QuantileMeanBatchNorm2d-50', 'QuantileMeanBatchNorm2d-75', 'QuantileMeanBatchNorm2d-90',
+
     'QuantileLayerNorm', 'QuantileLayerNorm-10', 'QuantileLayerNorm-25', 'QuantileLayerNorm-50', 'QuantileLayerNorm-75', 'QuantileLayerNorm-90',
+    'QuantileLayerNorm-AS', 'QuantileLayerNorm-10-AS', 'QuantileLayerNorm-25-AS', 'QuantileLayerNorm-50-AS', 'QuantileLayerNorm-75-AS', 'QuantileLayerNorm-90-AS',
 ]
